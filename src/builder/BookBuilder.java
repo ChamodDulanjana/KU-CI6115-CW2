@@ -1,4 +1,6 @@
-package model;
+package builder;
+
+import model.Book;
 
 import java.util.ArrayList;
 import java.util.List;
