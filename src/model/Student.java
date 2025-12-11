@@ -8,11 +8,11 @@ public class Student extends  User {
 
     @Override
     public int getBorrowLimit() {
-        return 0;
+        return 5;
     }
 
     @Override
     public int getBorrowDays() {
-        return 0;
+        return 14;
     }
 }
