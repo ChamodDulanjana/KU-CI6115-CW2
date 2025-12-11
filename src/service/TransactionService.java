@@ -15,11 +15,13 @@ public class TransactionService {
     private final BookService bookService;
     private final UserService userService;
     private final FineCalculator fineCalculator;
+    private final NotificationService notificationService;
 
-    public TransactionService(BookService bookService, UserService userService, FineCalculator fineCalculator) {
+    public TransactionService(BookService bookService, UserService userService, FineCalculator fineCalculator, NotificationService notificationService) {
         this.bookService = bookService;
         this.userService = userService;
         this.fineCalculator = fineCalculator;
+        this.notificationService = notificationService;
     }
 
     // Borrow flow
@@ -79,6 +81,9 @@ public class TransactionService {
         // update book status to BORROWED
         bookService.setStatus(bookId, BookStatus.BORROWED);
 
+        // notify the user who borrowed
+        notificationService.notifyUser(userId, "You have borrowed book [" + book.getTitle() + " - " + bookId + "]. Due: " + dueDate);
+
         System.out.println("Borrow successful. Due date: " + dueDate);
         return tx;
     }
@@ -106,21 +111,25 @@ public class TransactionService {
 
         double fine = fineCalculator.calculateFine(user, daysLate);
 
-        // reservation handling unchanged...
+        // notify next reserver if exists
         if (bookService.hasReservations(bookId)) {
-            Optional<String> nextUserId = bookService.pollNextReservation(bookId);
-            if (nextUserId.isPresent()) {
+            Optional<String> nextUserOpt = bookService.peekNextReservation(bookId);
+            if (nextUserOpt.isPresent()) {
+                String nextId = nextUserOpt.get();
                 bookService.setStatus(bookId, BookStatus.RESERVED);
-                System.out.println("Book returned. Reserved for user: " + nextUserId.get());
-                System.out.println("Notify user (" + nextUserId.get() + "): the book [" + bookId + "] is available for pickup.");
+                String message = "The book [" + bookId + "] you reserved is now available for pickup.";
+                notificationService.notifyUser(nextId, message);
             } else {
+                // No actual reserver (edge case) -> make available
                 bookService.setStatus(bookId, BookStatus.AVAILABLE);
             }
         } else {
             bookService.setStatus(bookId, BookStatus.AVAILABLE);
         }
 
-        System.out.println("Return processed. Days late: " + daysLate + " Fine: " + fine);
+
+        String returnMsg = String.format("Return processed for book %s. Days late: %d Fine: %.2f", bookId, daysLate, fine);
+        notificationService.notifyUser(userId, returnMsg); // notify returner about fines/processing
     }
 
     // Reserve flow
@@ -131,28 +140,23 @@ public class TransactionService {
                 .orElseThrow(() -> new IllegalStateException("Book not found: " + bookId));
 
         if (book.getStatus() == BookStatus.AVAILABLE) {
-            // If available, just mark reserved and add to queue (user can pick immediately or we can let them borrow)
+            // If available, just mark reserved and add to queue
             bookService.addReservation(bookId, userId);
             bookService.setStatus(bookId, BookStatus.RESERVED);
-            System.out.println("Book is currently available — reserved for you. Please pick up or borrow it soon.");
+            String msg = "Book [" + book.getTitle() + " - " + bookId + "] has been reserved for you. Please pick it up soon.";
+            notificationService.notifyUser(userId, msg);
             return;
         }
 
         // If borrowed or reserved, add to reservation queue
         bookService.addReservation(bookId, userId);
-        System.out.println("Reservation added. You are in queue position: " +
-                (bookService.getReservationsForBook(bookId).size()));
+        int pos = bookService.getReservationsForBook(bookId).size();
+        String msg = "You have been added to reservation queue for book [" + book.getTitle() + " - " + bookId + "]. Queue position: " + pos;
+        notificationService.notifyUser(userId, msg);
     }
 
     // List transactions
     public List<BorrowTransaction> listAllTransactions() {
         return new ArrayList<>(transactions.values());
-    }
-
-    // helper: list active borrows for a user
-    public List<BorrowTransaction> listActiveByUser(String userId) {
-        return transactions.values().stream()
-                .filter(t -> !t.isReturned() && t.getUserId().equals(userId))
-                .collect(Collectors.toList());
     }
 }

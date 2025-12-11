@@ -1,10 +1,7 @@
 import model.Book;
 import model.BorrowTransaction;
 import model.Student;
-import service.BookService;
-import service.FineCalculator;
-import service.TransactionService;
-import service.UserService;
+import service.*;
 
 import java.util.Scanner;
 
@@ -12,10 +9,11 @@ public class Main {
     public static void main(String[] args) {
 
         // initialize services
+        NotificationService notificationService = new NotificationService();
         BookService bookService = new BookService();
-        UserService userService = new UserService();
+        UserService userService = new UserService(notificationService);
         FineCalculator fineCalculator = new FineCalculator();
-        TransactionService transactionService = new TransactionService(bookService, userService, fineCalculator);
+        TransactionService transactionService = new TransactionService(bookService, userService, fineCalculator, notificationService);
 
         Scanner scanner = new Scanner(System.in);
         int choice;

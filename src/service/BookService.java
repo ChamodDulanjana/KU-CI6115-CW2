@@ -58,4 +58,10 @@ public class BookService {
         if (q == null) return Collections.emptyList();
         return new ArrayList<>(q);
     }
+
+    public Optional<String> peekNextReservation(String bookId) {
+        Queue<String> q = reservations.get(bookId);
+        if (q == null || q.isEmpty()) return Optional.empty();
+        return Optional.ofNullable(q.peek());
+    }
 }

@@ -1,6 +1,11 @@
 package model;
 
-public abstract class User {
+import service.NotificationObserver;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public abstract class User implements NotificationObserver {
     protected String id;
     protected String name;
     protected String email;
@@ -29,6 +34,13 @@ public abstract class User {
 
     public abstract int getBorrowLimit();
     public abstract int getBorrowDays();
+
+    // NotificationObserver implementation
+    @Override
+    public void update(String message) {
+        // display to console
+        System.out.println("**Notification for " + name + " (" + id + "): " + message);
+    }
 
     @Override
     public String toString() {
