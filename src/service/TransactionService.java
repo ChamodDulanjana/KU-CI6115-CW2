@@ -1,9 +1,6 @@
 package service;
 
-import model.Book;
-import model.BookStatus;
-import model.BorrowTransaction;
-import model.User;
+import model.*;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -128,5 +125,65 @@ public class TransactionService {
         return transactions.values().stream()
                 .filter(t -> !t.isReturned() && t.getUserId().equals(userId))
                 .collect(Collectors.toList());
+    }
+
+    public String returnBookAndGetTransactionId(String userId, String bookId) {
+        Optional<BorrowTransaction> opt = transactions.values().stream()
+                .filter(t -> !t.isReturned() && t.getUserId().equals(userId) && t.getBookId().equals(bookId))
+                .findFirst();
+
+        if (opt.isEmpty()) throw new IllegalStateException("Active borrow transaction not found.");
+
+        BorrowTransaction tx = opt.get();
+        returnBook(userId, bookId); // existing method does markReturned etc.
+        return tx.getId();
+    }
+
+    public void undoBorrowTransaction(String txId) {
+        BorrowTransaction tx = transactions.get(txId);
+        if (tx == null) {
+            System.out.println("No such transaction to undo: " + txId);
+            return;
+        }
+
+        if (tx.isReturned()) {
+            System.out.println("Cannot undo borrow: transaction already returned.");
+            return;
+        }
+
+        // remove transaction
+        transactions.remove(txId);
+
+        // set book back to available or reserved depending on reservations
+        Book book = bookService.findById(tx.getBookId()).orElseThrow();
+        if (book.hasReservations()) {
+            // leave in RESERVED state (the reserver was likely in queue)
+            // no change to reservation queue
+            // set to RESERVED via Book state transition:
+            book.setState(new ReservedState()); // if you prefer, call book.returnRequested with dummy user? but setting state is fine here
+        } else {
+            book.setState(new AvailableState());
+        }
+    }
+
+    public void undoReturn(String txId) {
+        BorrowTransaction tx = transactions.get(txId);
+        if (tx == null) {
+            System.out.println("No such transaction to undo return: " + txId);
+            return;
+        }
+
+        if (!tx.isReturned()) {
+            System.out.println("Transaction is not marked returned; nothing to undo.");
+            return;
+        }
+
+        // mark not returned and clear returnDate
+        tx.markReturned(null); // we need a method to unmark; if BorrowTransaction doesn't have it, we'll add below
+        // set book state back to BORROWED
+        Book book = bookService.findById(tx.getBookId()).orElseThrow();
+        book.setState(new BorrowedState());
+
+        // NOTE: this does not reverse notifications or fines already shown to users.
     }
 }

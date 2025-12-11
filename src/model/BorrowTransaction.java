@@ -33,6 +33,11 @@ public class BorrowTransaction {
         this.returned = true;
     }
 
+    public void unmarkReturned() {
+        this.returnDate = null;
+        this.returned = false;
+    }
+
     @Override
     public String toString() {
         return String.format("TX[%s] user=%s book=%s borrow=%s due=%s returned=%s returnDate=%s",

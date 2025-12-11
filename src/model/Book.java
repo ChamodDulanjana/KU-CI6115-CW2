@@ -79,12 +79,12 @@ public class Book {
         return Optional.ofNullable(reservations.poll());
     }
 
-    boolean hasReservations() {
+    public boolean hasReservations() {
         return !reservations.isEmpty();
     }
 
     // --- state accessor/mutator used by state classes ---
-    void setState(BookState newState) {
+    public void setState(BookState newState) {
         this.state = newState;
     }
 
