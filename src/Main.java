@@ -1,6 +1,4 @@
-import model.Book;
-import model.BorrowTransaction;
-import model.Student;
+import model.*;
 import service.*;
 
 import java.util.Scanner;
@@ -17,12 +15,13 @@ public class Main {
 
         Scanner scanner = new Scanner(System.in);
         int choice;
+        int memberShipChoice;
 
         do {
             System.out.println("\n===== SMART LIBRARY SYSTEM =====");
             System.out.println("1. Add Book");
             System.out.println("2. List Books");
-            System.out.println("3. Register Student");
+            System.out.println("3. Register User");
             System.out.println("4. List Users");
             System.out.println("5. Borrow Book");
             System.out.println("6. Return Book");
@@ -42,7 +41,15 @@ public class Main {
                         listBooksFlow(bookService);
                         break;
                     case 3:
-                        registerStudentFlow(scanner, userService);
+                        System.out.println("Select membership type:");
+                        System.out.println("1. Student");
+                        System.out.println("2. Faculty");
+                        System.out.println("3. Guest");
+                        System.out.print("Enter choice: ");
+
+                        memberShipChoice = readInt(scanner);
+
+                        registerUserFlow(scanner, userService, memberShipChoice);
                         break;
                     case 4:
                         listUsersFlow(userService);
@@ -104,18 +111,25 @@ public class Main {
         bookService.listAll().forEach(System.out::println);
     }
 
-    private static void registerStudentFlow(Scanner scanner, UserService userService) {
+    private static void registerUserFlow(Scanner scanner, UserService userService, int memberShipChoice) {
         scanner.nextLine();
-        System.out.print("Enter Student ID: ");
+        System.out.print("Enter User ID: ");
         String id = scanner.nextLine();
-        System.out.print("Enter Student Name: ");
+        System.out.print("Enter User Name: ");
         String name = scanner.nextLine();
         System.out.print("Enter Email: ");
         String email = scanner.nextLine();
         System.out.print("Enter Contact Number: ");
         String contact = scanner.nextLine();
-        Student s = new Student(id, name, email, contact);
-        userService.registerUser(s);
+
+        User user = switch (memberShipChoice) {
+            case 1 -> new Student(id, name, email, contact);
+            case 2 -> new Faculty(id, name, email, contact);
+            case 3 -> new Guest(id, name, email, contact);
+            default -> throw new IllegalStateException("Invalid membership type");
+        };
+
+        userService.registerUser(user);
     }
 
     private static void listUsersFlow(UserService userService) {
