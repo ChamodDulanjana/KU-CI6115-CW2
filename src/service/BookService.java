@@ -31,13 +31,8 @@ public class BookService {
         return b != null && b.getStatus() == BookStatus.AVAILABLE;
     }
 
-    public void setStatus(String bookId, BookStatus status) {
-        Book b = books.get(bookId);
-        if (b != null) b.setStatus(status);
-    }
-
     // --- Reservation helpers ---
-    public void addReservation(String bookId, String userId) {
+   /* public void addReservation(String bookId, String userId) {
         reservations.computeIfAbsent(bookId, k -> new LinkedList<>()).add(userId);
     }
 
@@ -63,5 +58,5 @@ public class BookService {
         Queue<String> q = reservations.get(bookId);
         if (q == null || q.isEmpty()) return Optional.empty();
         return Optional.ofNullable(q.peek());
-    }
+    }*/
 }
