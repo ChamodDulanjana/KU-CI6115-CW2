@@ -2,6 +2,7 @@ import model.Book;
 import model.BorrowTransaction;
 import model.Student;
 import service.BookService;
+import service.FineCalculator;
 import service.TransactionService;
 import service.UserService;
 
@@ -13,7 +14,8 @@ public class Main {
         // initialize services
         BookService bookService = new BookService();
         UserService userService = new UserService();
-        TransactionService transactionService = new TransactionService(bookService, userService);
+        FineCalculator fineCalculator = new FineCalculator();
+        TransactionService transactionService = new TransactionService(bookService, userService, fineCalculator);
 
         Scanner scanner = new Scanner(System.in);
         int choice;

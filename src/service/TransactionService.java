@@ -14,13 +14,12 @@ public class TransactionService {
     private final Map<String, BorrowTransaction> transactions = new HashMap<>();
     private final BookService bookService;
     private final UserService userService;
+    private final FineCalculator fineCalculator;
 
-    // simple per-day fine (temporary; we'll refactor to Strategy later)
-    private final double PER_DAY_FINE = 10.0;
-
-    public TransactionService(BookService bookService, UserService userService) {
+    public TransactionService(BookService bookService, UserService userService, FineCalculator fineCalculator) {
         this.bookService = bookService;
         this.userService = userService;
+        this.fineCalculator = fineCalculator;
     }
 
     // Borrow flow
@@ -39,7 +38,7 @@ public class TransactionService {
 
         // If there are reservations for the book, find who is first in queue (if any)
         List<String> currentQueue = bookService.getReservationsForBook(bookId);
-        String firstInQueue = currentQueue.isEmpty() ? null : currentQueue.get(0);
+        String firstInQueue = currentQueue.isEmpty() ? null : currentQueue.getFirst();
 
         // If book is AVAILABLE
         if (status == BookStatus.AVAILABLE) {
@@ -86,7 +85,6 @@ public class TransactionService {
 
     // Return flow
     public void returnBook(String userId, String bookId) throws IllegalStateException {
-        // find the active transaction
         Optional<BorrowTransaction> opt = transactions.values().stream()
                 .filter(t -> !t.isReturned() && t.getUserId().equals(userId) && t.getBookId().equals(bookId))
                 .findFirst();
@@ -99,30 +97,30 @@ public class TransactionService {
         LocalDate returnDate = LocalDate.now();
         tx.markReturned(returnDate);
 
-        // compute fine if any
         long daysLate = ChronoUnit.DAYS.between(tx.getDueDate(), returnDate);
-        double fine = 0.0;
-        if (daysLate > 0) {
-            fine = daysLate * PER_DAY_FINE;
-        }
+        if (daysLate < 0) daysLate = 0;
 
-        // if a reservation exists, set to RESERVED and notify next user
+        // get user to compute fine using strategy
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+
+        double fine = fineCalculator.calculateFine(user, daysLate);
+
+        // reservation handling unchanged...
         if (bookService.hasReservations(bookId)) {
             Optional<String> nextUserId = bookService.pollNextReservation(bookId);
             if (nextUserId.isPresent()) {
-                // set status to RESERVED
                 bookService.setStatus(bookId, BookStatus.RESERVED);
                 System.out.println("Book returned. Reserved for user: " + nextUserId.get());
                 System.out.println("Notify user (" + nextUserId.get() + "): the book [" + bookId + "] is available for pickup.");
             } else {
-                // safety fallback
                 bookService.setStatus(bookId, BookStatus.AVAILABLE);
             }
         } else {
             bookService.setStatus(bookId, BookStatus.AVAILABLE);
         }
 
-        System.out.println("Return processed. Days late: " + Math.max(0, daysLate) + " Fine: " + fine);
+        System.out.println("Return processed. Days late: " + daysLate + " Fine: " + fine);
     }
 
     // Reserve flow
