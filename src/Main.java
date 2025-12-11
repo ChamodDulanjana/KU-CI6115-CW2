@@ -102,7 +102,18 @@ public class Main {
         String category = scanner.nextLine();
         System.out.print("Enter ISBN: ");
         String isbn = scanner.nextLine();
-        Book b = new Book(id, title, author, category, isbn);
+        System.out.print("Enter Edition: ");
+        String edition = scanner.nextLine();
+        System.out.print("Enter Summery: ");
+        String summery = scanner.nextLine();
+        System.out.print("Enter Tag: ");
+        String tag = scanner.nextLine();
+
+        Book b = new BookBuilder(id, title, author, category, isbn)
+                .edition(edition)
+                .summary(summery)
+                .addTag(tag)
+                .build();
         bookService.addBook(b);
     }
 
